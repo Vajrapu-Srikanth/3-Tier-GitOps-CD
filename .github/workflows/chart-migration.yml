@@ -39,7 +39,7 @@ jobs:
           set -e
 
           # specify the path to the single env-details file
-          ENV_FILE_PATH="./3-Tier-GitOps-CD/${{ inputs.filepath }}"
+          ENV_FILE_PATH="./${{ inputs.filepath }}"
           
           while read line; do
               CHART=$(echo $line | cut -d':' -f1)
