@@ -19,7 +19,7 @@ jobs:
       S_USER: "srikanthhg"
       S_PASS: ${{ secrets.S_OLD_TOKEN }}
       VS_USER: "Vajrapu-Srikanth"
-      VS_PASS: ${{ secrets.GITHUB_TOKEN }}
+      VS_PASS: ${{ secrets.S_NEW_TOKEN }}
 
     steps:
       - name: Checkout repo
