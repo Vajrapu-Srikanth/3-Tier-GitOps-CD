@@ -35,68 +35,81 @@ jobs:
       
       - name: Run Deployment Script
         run: |
+          
           #!/bin/bash
           set -e
 
-          # specify the path to the single env-details file
-          ENV_FILE_PATH="./${{ inputs.filepath }}"
-          
-          while read line; do
-              CHART=$(echo $line | cut -d':' -f1)
-              TAG=$(echo $line | cut -d'|' -f1 | cut -d':' -f2 | tr -d ' ')
-              echo -e "\n==============Chart Details: $CHART:$TAG================"
+          # specify the path to the env-details file
+          ENV_FILE_PATH="./3-Tier-GitOps-CD/${{ inputs.filepath }}"
+
+          while read -r line; do
+              CHART=$(echo "$line" | cut -d':' -f1)
+              TAG=$(echo "$line" | cut -d'|' -f1 | cut -d':' -f2 | tr -d ' ')
+              echo -e "\n============== Chart Details: $CHART:$TAG ================"
 
               rm -rf charts/$CHART || true
-              echo $S_PASS | helm registry login ghcr.io --username $S_USER --password-stdin
-              helm pull oci://$S_REG/$CHART --version $TAG --untar -d ./charts || {
-                echo "Chart Details: $CHART:$TAG not found. Skipping..."  >> $GITHUB_STEP_SUMMARY
-                continue
-              }
-              ls -ltr
+
+              # login to source registry
+              echo "$S_PASS" | helm registry login ghcr.io --username "$S_USER" --password-stdin
+
+              # try pulling chart from source
+              if helm pull oci://$S_REG/$CHART --version "$TAG" --untar -d ./charts; then
+                  echo "✅ Pulled $CHART:$TAG from $S_REG"
+              else
+                  echo "⚠️ Chart $CHART:$TAG not found in $S_REG. Skipping..."
+                  echo "Chart $CHART:$TAG not found in $S_REG" >> $GITHUB_STEP_SUMMARY
+                  continue
+              fi
+
               cd ./charts/$CHART
 
+              # Replace registry references in values.yaml
               sed -i "s|$S_REG|$VS_REG|g" values.yaml
 
-              echo -e "\n**** Repo name in $CHART values file"
-              grep "repository: " values.yaml || true
+              echo -e "\n**** Repo name in $CHART values.yaml"
+              grep "repository:" values.yaml || true
 
+              # Image validation (skip for certain charts)
               if [[ ! "$CHART" =~ ^(com-met|hello|metadata)$ ]]; then
-                  IMAGE=$(helm template . | grep "image:" | awk '${print $2}' | tr -d "\"")
-                  echo -e "**** Images associated with Chart:\n $IMAGE"
-                  echo $VS_PASS | docker login ghcr.io -u $VS_USER --password-stdin
+                  IMAGES=$(helm template . | grep "image:" | awk '{print $2}' | tr -d '"')
+                  echo -e "**** Images associated with Chart:\n $IMAGES"
+
+                  echo "$VS_PASS" | docker login ghcr.io -u "$VS_USER" --password-stdin
 
                   IMAGE_MISSING=false
-                  for i in $IMAGE
-                  do
-                      if docker mainfest inspect "$i" > /dev/null 2>&1; then
-                          echo -e "\n**** Image $i exists"
+                  for i in $IMAGES; do
+                      if docker manifest inspect "$i" > /dev/null 2>&1; then
+                          echo "✅ Image $i exists"
                       else
-                          echo -e "Image $i does not exist, continue"  >> $GITHUB_STEP_SUMMARY
+                          echo "⚠️ Image $i does not exist, skipping..." >> $GITHUB_STEP_SUMMARY
                           IMAGE_MISSING=true
                       fi
                   done
 
                   if [ "$IMAGE_MISSING" = true ]; then
-                      echo "One or more images for $CHART:$TAG not found. Skipping chart packaging and pushing..." >> $GITHUB_STEP_SUMMARY
+                      echo "Skipping chart $CHART:$TAG due to missing images"
+                      cd ../../
+                      rm -rf ./charts/$CHART
                       continue
                   fi
               else
-                 echo "Skipping the Image validation $CHART chart"
-
+                  echo "Skipping image validation for $CHART"
               fi
 
+              # Package chart again (with updated values.yaml)
               helm package . 
               mv $CHART-$TAG.tgz ../../
 
               cd ../../
 
-              echo $VS_PASS | docker login ghcr.io -u $VS_USER --password-stdin
-              helm push $CHART-$TAG.tgz  oci://$VS_REG
+              # Push to destination registry
+              echo "$VS_PASS" | helm registry login ghcr.io --username "$VS_USER" --password-stdin
+              helm push $CHART-$TAG.tgz oci://$VS_REG
 
-              echo "**** Pushed $CHART-$TAG to $VS_REG"
-              echo "**** Pushed $CHART-$TAG to $VS_REG" >> $GITHUB_STEP_SUMMARY
+              echo "✅ Pushed $CHART:$TAG to $VS_REG"
+              echo "✅ Pushed $CHART:$TAG to $VS_REG" >> $GITHUB_STEP_SUMMARY
 
               rm -rf ./charts/$CHART || true
-              rm $CHART-$TAG.tgz
+              rm -f $CHART-$TAG.tgz
 
           done < "$ENV_FILE_PATH"
