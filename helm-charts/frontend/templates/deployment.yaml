@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: prod
+  labels:
+    app: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.repository }}/{{ .Values.image.name }}:{{  .values.image.tag  }} #ghcr.io/srikanthhg/frontend:694535bf15cb7328bd153687abca4167a3fd083a
+          ports:
+            - containerPort: 80

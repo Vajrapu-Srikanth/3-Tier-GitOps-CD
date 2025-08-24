@@ -1,0 +1,7 @@
+repository: ghcr.io/srikanthhg
+
+image:
+  name: frontend
+  tag: 269f828a726e43258e43b879c4fa8cf6983b8783f6a099bd99171e468a028f6b
+
+  # 269f828a726e43258e43b879c4fa8cf6983b8783f6a099bd99171e468a028f6b

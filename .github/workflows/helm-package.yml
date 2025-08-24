@@ -1,0 +1,67 @@
+name: package helm chart
+
+on:
+    push: 
+        branches: ["main"]
+
+env:
+    registry_name: "oci://ghcr.io/srikanthhg"
+
+jobs:
+    publish-helm:
+        outputs:
+          chart_path: ${{ steps.fetch_path.outputs.chart_path }}
+          chart_name: ${{ steps.fetch_path.outputs.chart_name }}
+          version: ${{ steps.version_fetch.outputs.version }}
+        runs-on: ubuntu-latest
+        # permissions:
+        #   contents: read
+        #   packages: write
+        steps:
+          - name: Checkout repo
+            uses: actions/checkout@v4
+            with:
+              repository: 'srikanthhg/3-Tier-GitOps-CD'
+              token: ${{ secrets.GH_PAT2 }}
+              fetch-depth: 2
+              ref: main
+
+          - name: Install Helm
+            uses: azure/setup-helm@v4
+            with:
+                version: v3.15.2
+        
+          - name: Detect changed chart(s)
+            id: fetch_path
+            run: |
+                git diff --name-only ${{ github.event.before }} ${{ github.sha }} > modified_files.txt
+                cat modified_files.txt
+                cp scripts/extract_chart_path.sh .
+                chart_path=$(sh extract_chart_path.sh)
+                chart_name=$(sh extract_chart_path.sh | awk -F '/' '{print $2}')
+                echo $chart_path
+                echo $chart_name
+                echo "chart_path=$chart_path" >> $GITHUB_OUTPUT
+                echo "chart_name=$chart_name" >> $GITHUB_OUTPUT
+          
+          - name: Package Helm Chart
+            id: version_fetch
+            run: |
+                version=25.03.${{ github.run_number }}
+                echo "version=$version" >> $GITHUB_OUTPUT
+                rm -rf *.tgz
+                helm package ./${{ steps.fetch_path.outputs.chart_path }} --version ${version}
+
+          - name: Set up Helm registry login
+            run: |
+                echo "${{ secrets.GH_PAT2 }}" | helm registry login ghcr.io --username ${{ github.actor }}  --password-stdin
+
+          - name: Push Helm Chart(s) to Github container registry
+            run: |
+                version=25.03.${{github.run_number}}
+                chartName=${{ steps.fetch_path.outputs.chart_name }}-${version}.tgz
+                # tar -xvf ${chartName}
+                echo ${chartName}
+                echo "🚀 Pushing the helm package ${chartName}"
+                helm push ${chartName} ${{ env.registry_name }}
+                echo -e "###📦 Package Published Details: \n ${chartName}" >> $GITHUB_STEP_SUMMARY

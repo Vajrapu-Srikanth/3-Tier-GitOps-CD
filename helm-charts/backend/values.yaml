@@ -1,0 +1,7 @@
+repository: ghcr.io/srikanthhg
+
+image:
+  name: backend
+  tag: 9e389a730814fdfa4629f92bccc168c10e52c1b093497a56c339965a45c473e7
+
+  # 9e389a730814fdfa4629f92bccc168c10e52c1b093497a56c339965a45c473e7
