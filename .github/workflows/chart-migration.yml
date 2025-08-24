@@ -50,6 +50,7 @@ jobs:
               echo $S_PASS | helm registry login ghcr.io --username $S_USER --password-stdin
               helm pull oci://$S_REG/$CHART --version $TAG --untar -d ./charts || {
                 echo "Chart Details: $CHART:$TAG not found. Skipping..."  >> $GITHUB_STEP_SUMMARY
+                continue
               }
               ls -ltr
               cd ./charts/$CHART
