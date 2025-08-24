@@ -57,7 +57,7 @@ jobs:
               grep "repository: " values.yaml || true
 
               if [[ ! "$CHART" =~ ^(com-met|hello|metadata)$ ]]; then
-                  IMAGE=$(helm template . | grep "image:" | awk '${print $2}' | tr -d "\")
+                  IMAGE=$(helm template . | grep "image:" | awk '${print $2}' | tr -d "\"")
                   echo -e "**** Images associated with Chart:\n $IMAGE"
                   echo $VS_PASS | docker login ghcr.io -u $VS_USER --password-stdin
 
