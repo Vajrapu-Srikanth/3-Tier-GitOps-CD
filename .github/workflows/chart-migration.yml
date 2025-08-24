@@ -8,7 +8,7 @@ on:
         type: choice
         description: Select Filepath
         options:
-          - 'env-details/test.yml'
+          - 'env-details/test.yaml'
         
 jobs:
   deploy:
