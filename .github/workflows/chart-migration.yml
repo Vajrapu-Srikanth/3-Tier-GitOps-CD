@@ -51,7 +51,7 @@ jobs:
               helm pull oci://$S_REG/$CHART --version $TAG --untar -d ./charts || {
                 echo "Chart Details: $CHART:$TAG not found. Skipping..."  >> $GITHUB_STEP_SUMMARY
               }
-
+              ls -ltr
               cd ./charts/$CHART
 
               sed -i "s|$S_REG|$VS_REG|g" values.yaml
