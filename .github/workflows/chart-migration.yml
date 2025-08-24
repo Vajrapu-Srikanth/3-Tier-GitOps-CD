@@ -24,7 +24,9 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        run: ls -ltr
+      
+      - run: |
+           ls -ltr
 
       - name: Install Helm
         uses: azure/setup-helm@v4
